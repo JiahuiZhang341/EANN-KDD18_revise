@@ -4,7 +4,7 @@ import time, os
 # import random
 import process_data_weibo as process_data
 import copy
-import cPickle as pickle
+import pickle as pickle
 from random import sample
 import torchvision
 from sklearn.model_selection import train_test_split
@@ -43,22 +43,20 @@ class Rumor_Data(Dataset):
 
 
 
-
 class ReverseLayerF(Function):
-    #def __init__(self, lambd):
-        #self.lambd = lambd
 
     #@staticmethod
-    def forward(self, x):
-        self.lambd = args.lambd
+    def forward(self, x, lambd):
+        self.lambd = lambd
         return x.view_as(x)
 
     #@staticmethod
     def backward(self, grad_output):
-        return (grad_output * -self.lambd)
+        return grad_output.neg() * self.lambd, None
 
-def grad_reverse(x):
-    return ReverseLayerF()(x)
+def grad_reverse(x, lambd =1.0):
+    return ReverseLayerF.apply(x, lambd)
+
 
 
 
@@ -175,7 +173,7 @@ class CNN_Fusion(nn.Module):
         #class_output = self.class_classifier(text_image)
         class_output = self.class_classifier(text)
         ## Domain
-        reverse_feature = grad_reverse(text)
+        reverse_feature = grad_reverse(text, lambd=args.lambd)
         domain_output = self.domain_classifier(reverse_feature)
      
         return class_output, domain_output
@@ -349,10 +347,10 @@ def main(args):
                 _, labels = torch.max(train_labels, 1)
                 accuracy = (labels.squeeze() == argmax.squeeze()).float().mean()
 
-            class_cost_vector.append(class_loss.data[0])
+            class_cost_vector.append(class_loss.item())
             #domain_cost_vector.append(domain_loss.data[0])
-            cost_vector.append(loss.data[0])
-            acc_vector.append(accuracy.data[0])
+            cost_vector.append(loss.item())
+            acc_vector.append(accuracy.item())
             # if i == 0:
             #     train_score = to_np(class_outputs.squeeze())
             #     train_pred = to_np(argmax.squeeze())
@@ -375,9 +373,9 @@ def main(args):
             #domain_loss = criterion(domain_outputs, event_labels)
                 #_, labels = torch.max(validate_labels, 1)
             validate_accuracy = (validate_labels == validate_argmax.squeeze()).float().mean()
-            vali_cost_vector.append( vali_loss.data[0])
+            vali_cost_vector.append( vali_loss.item())
                 #validate_accuracy = (validate_labels == validate_argmax.squeeze()).float().mean()
-            validate_acc_vector_temp.append(validate_accuracy.data[0])
+            validate_acc_vector_temp.append(validate_accuracy.item())
         validate_acc = np.mean(validate_acc_vector_temp)
         valid_acc_vector.append(validate_acc)
         model.train()
@@ -543,4 +541,5 @@ if __name__ == '__main__':
     args = parser.parse_args([train, test, output])
     #    print(args)
     main(args)
+
 

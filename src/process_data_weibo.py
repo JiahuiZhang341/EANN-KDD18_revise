@@ -1,5 +1,5 @@
 # encoding=utf-8
-import cPickle as pickle
+import pickle
 import random
 from random import *
 import numpy as np
@@ -24,7 +24,7 @@ from gensim.models import Word2Vec
 def stopwordslist(filepath = '../Data/weibo/stop_words.txt'):
     stopwords = {}
     for line in open(filepath, 'r').readlines():
-        line = unicode(line, "utf-8").strip()
+        line = line.strip()
         stopwords[line] = 1
     #stopwords = [line.strip() for line in open(filepath, 'r', encoding='utf-8').readlines()]
     return stopwords
@@ -121,7 +121,7 @@ def write_data(flag, image, text_only):
 
                 if (i + 1) % 3 == 1:
                     line_data = []
-                    twitter_id = l.split('|')[0]
+                    twitter_id = l.decode('utf-8').split('|')[0]
                     line_data.append(twitter_id)
 
 
@@ -131,7 +131,7 @@ def write_data(flag, image, text_only):
                     line_data.append(l.lower())
 
                 if (i + 1) % 3 == 0:
-                    l = clean_str_sst(unicode(l, "utf-8"))
+                    l = clean_str_sst(str(l, "utf-8"))
 
                     seg_list = jieba.cut_for_search(l)
                     new_seg_list = []
@@ -220,8 +220,8 @@ def write_data(flag, image, text_only):
 
                 label.append(post.iloc[i]['label'])
 
-        label = np.array(label, dtype=np.int)
-        ordered_event = np.array(ordered_event, dtype=np.int)
+        label = np.array(label, dtype=int)
+        ordered_event = np.array(ordered_event, dtype=int)
 
         print("Label number is " + str(len(label)))
         print("Rummor number is " + str(sum(label)))
@@ -391,7 +391,7 @@ def get_data(text_only):
     #
     word_embedding_path = "../Data/weibo/w2v.pickle"
 
-    w2v = pickle.load(open(word_embedding_path, 'rb'))
+    w2v = pickle.load(open(word_embedding_path, 'rb'), encoding='latin1')
     # print(temp)
     # #
     print("word2vec loaded!")
