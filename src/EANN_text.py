@@ -15,6 +15,8 @@ from torch.autograd import Variable, Function
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence
+from torch.utils.tensorboard import SummaryWriter
+
 
 import torchvision.datasets as dsets
 import torchvision.transforms as transforms
@@ -24,6 +26,7 @@ import torchvision.transforms as transforms
 from sklearn import metrics
 from sklearn.preprocessing import label_binarize
 import scipy.io as sio
+writer = SummaryWriter('./log')
 
 class Rumor_Data(Dataset):
     def __init__(self, dataset):
@@ -181,6 +184,8 @@ class CNN_Fusion(nn.Module):
 def to_var(x):
     if torch.cuda.is_available():
         x = x.cuda()
+    else:
+        x = x.to("mps")
     return Variable(x)
 
 
@@ -276,6 +281,8 @@ def main(args):
     if torch.cuda.is_available():
         print("CUDA")
         model.cuda()
+    else:
+        model.to("mps")
 
     # Loss and Optimizer
     criterion = nn.CrossEntropyLoss()
@@ -351,6 +358,8 @@ def main(args):
             #domain_cost_vector.append(domain_loss.data[0])
             cost_vector.append(loss.item())
             acc_vector.append(accuracy.item())
+
+        
             # if i == 0:
             #     train_score = to_np(class_outputs.squeeze())
             #     train_pred = to_np(argmax.squeeze())
@@ -383,7 +392,12 @@ def main(args):
                 % (
                 epoch + 1, args.num_epochs,  np.mean(cost_vector), np.mean(class_cost_vector), np.mean(vali_cost_vector),
                     np.mean(acc_vector),   validate_acc, ))
-
+        # 计算每个 epoch 的平均损失
+        avg_loss = vali_loss / len(validate_loader)
+    
+        # 记录到 TensorBoard
+        writer.add_scalar('Loss/train', avg_loss, epoch)
+        writer.add_scalar('accuracy', validate_accuracy, epoch)
 
         if validate_acc > best_validate_acc:
             best_validate_acc = validate_acc
@@ -391,7 +405,7 @@ def main(args):
                 os.mkdir(args.output_file)
             best_validate_dir = args.output_file + str(epoch + 1) + '_text.pkl'
             torch.save(model.state_dict(), best_validate_dir)
-
+    writer.close()
 
     duration = time.time() - start_time
     #print ('Epoch: %d, Mean_Cost: %.4f, Duration: %.4f, Mean_Train_Acc: %.4f, Mean_Test_Acc: %.4f'
@@ -405,6 +419,8 @@ def main(args):
     #    print(torch.cuda.is_available())
     if torch.cuda.is_available():
         model.cuda()
+    else:
+        model.to("mps")
     model.eval()
     test_score = []
     test_pred = []
@@ -467,7 +483,7 @@ def parse_arguments(parser):
     #    parser.add_argument('--num_layers', type = int, default = 2, help = '')
     #    parser.add_argument('--num_classes', type = int, default = 10, help = '')
     parser.add_argument('--d_iter', type=int, default=3, help='')
-    parser.add_argument('--batch_size', type=int, default=100, help='')
+    parser.add_argument('--batch_size', type=int, default=256, help='')
     parser.add_argument('--num_epochs', type=int, default=100, help='')
     parser.add_argument('--learning_rate', type=float, default=0.001, help='')
     parser.add_argument('--event_num', type=int, default=10, help='')
